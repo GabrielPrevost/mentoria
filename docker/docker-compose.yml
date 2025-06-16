@@ -1,0 +1,70 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: mentoria
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    volumes:
+      - ../backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DEBUG=True
+      - DB_HOST=db
+      - DB_NAME=mentoria
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379
+    command: python manage.py runserver 0.0.0.0:8000
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+    command: npm run dev
+
+  celery:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    volumes:
+      - ../backend:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DEBUG=True
+      - DB_HOST=db
+      - DB_NAME=mentoria
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379
+    command: celery -A mentoriaserver worker -l info
+
+volumes:
+  postgres_data:
