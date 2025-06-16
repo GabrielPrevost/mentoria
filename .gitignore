@@ -49,5 +49,4 @@ docker/data/
 
 # Development files
 .claude/
-.env.example
 CLAUDE.md
